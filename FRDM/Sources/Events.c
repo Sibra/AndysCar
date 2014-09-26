@@ -1,11 +1,11 @@
 /* ###################################################################
-**     Filename    : Events.h
+**     Filename    : Events.c
 **     Project     : FRDM
 **     Processor   : MKL25Z128VLK4
 **     Component   : Events
 **     Version     : Driver 01.00
 **     Compiler    : GNU C Compiler
-**     Date/Time   : 2014-09-19, 13:36, # CodeGen: 0
+**     Date/Time   : 2014-09-26, 14:25, # CodeGen: 0
 **     Abstract    :
 **         This is user's event module.
 **         Put your event handler code here.
@@ -15,7 +15,7 @@
 **
 ** ###################################################################*/
 /*!
-** @file Events.h
+** @file Events.c
 ** @version 01.00
 ** @brief
 **         This is user's event module.
@@ -25,19 +25,17 @@
 **  @addtogroup Events_module Events module documentation
 **  @{
 */         
-
-#ifndef __Events_H
-#define __Events_H
 /* MODULE Events */
 
-#include "PE_Types.h"
-#include "PE_Error.h"
-#include "PE_Const.h"
-#include "IO_Map.h"
+#include "Cpu.h"
+#include "Events.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif 
+
+
+/* User includes (#include below this line is not maintained by Processor Expert) */
 
 /*
 ** ===================================================================
@@ -52,8 +50,10 @@ extern "C" {
 **         interrupt] property is set to 'Enabled'.
 */
 /* ===================================================================*/
-void Cpu_OnNMIINT(void);
-
+void Cpu_OnNMIINT(void)
+{
+  /* Write your code here ... */
+}
 
 /* END Events */
 
@@ -61,8 +61,6 @@ void Cpu_OnNMIINT(void);
 }  /* extern "C" */
 #endif 
 
-#endif 
-/* ifndef __Events_H*/
 /*!
 ** @}
 */
