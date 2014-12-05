@@ -59,8 +59,8 @@ void remoteControl(uint8_t speedType) {
 			PID_Start();
 		}
 		TACHO_CalcSpeed();
-		DRV_SetSpeed(((int16_t) ((speedType & 0xF0) >> 4) - 0x07) * 400,
-				((int16_t) (speedType & 0x0F) - 0x07) * 400);
+		DRV_SetSpeed(((int16_t) ((speedType & 0xF0) >> 4) - 0x07) * 800,
+				((int16_t) (speedType & 0x0F) - 0x07) * 800);
 	}
 	else  {
 		PID_Start();
@@ -93,17 +93,20 @@ static void turn(MOT_Turn_Direction dir) {
 	}
 }
 void FindMode() {
+	while(StateMode == FIND)
+	{
 	int counter = 0;
 	uint8_t buf[16];
 	uint16_t cm, us;
-	speedR=2000;
-	speedL=2000;
+	speedR=1500;
+	speedL=1500;
 	int enableUS = 0;
 	do {
-
+		PID_Start();
 		for(counter=0;counter<5;counter++)
 		{
-		turn(MOT_TURN_LEFT);
+		TACHO_CalcSpeed();
+		DRV_SetSpeed(1500,-1500);
 		FRTOS1_vTaskDelay(2);
 		}
 
@@ -111,27 +114,32 @@ void FindMode() {
 		cm = US_usToCentimeters(us, 22);
 
 
-	} while ((cm < 1) || (cm > 30));
+	} while ((cm < 1) || (cm > 50));
 	counter=0;
+	PID_Start();
 	do {
-		turn(MOT_TURN_LEFT);
+		TACHO_CalcSpeed();
+		DRV_SetSpeed(1500,-1500);
 		counter++;
 		FRTOS1_vTaskDelay(2);
-	} while (counter<30);
+	} while (counter<100);
 	speedR=4000;
 	speedL=4000;
+	PID_Start();
 	while ((getRefSum() > 5000)  && (StateMode == FIND)) {
 		TACHO_CalcSpeed();
 		DRV_SetSpeed(speedL, speedR);
 		FRTOS1_vTaskDelay(2);
 	}
 	counter = 0;
+	PID_Start();
 	do {
 		TACHO_CalcSpeed();
-		DRV_SetSpeed(-speedL, -speedR);
+		DRV_SetSpeed(-1000, -1000);
 		FRTOS1_vTaskDelay(2);
 		counter++;
-	} while ((counter < 500) && (StateMode == FIND));
+	} while ((counter < 1000) && (StateMode == FIND));
+	}
 }
 
 void fightMode() {
