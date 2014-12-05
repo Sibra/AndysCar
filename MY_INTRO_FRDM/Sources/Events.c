@@ -204,7 +204,7 @@ void SW4_OnInterrupt(void)
 */
 void SW3_OnInterrupt(void)
 {
-#if 1
+#if 0
 #if PL_HAS_KBI
 #if 1 /* Problem with Processor Expert and sharing PTA4/NMI interrupt: code below is missing in ExtIntLdd3_OnInterrupt() */
   /* Check the pin interrupt flag of the shared interrupt */
@@ -279,6 +279,22 @@ void SW1_OnInterrupt(void)
 */
 /* ===================================================================*/
 void Cpu_OnNMIINT(void)
+{
+  /* Write your code here ... */
+}
+
+/*
+** ===================================================================
+**     Event       :  GI2C1_OnError (module Events)
+**
+**     Component   :  GI2C1 [GenericI2C]
+**     Description :
+**         Event called in case of error condition
+**     Parameters  : None
+**     Returns     : Nothing
+** ===================================================================
+*/
+void GI2C1_OnError(void)
 {
   /* Write your code here ... */
 }

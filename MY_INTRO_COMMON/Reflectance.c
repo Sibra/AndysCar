@@ -38,10 +38,11 @@
 /*!TODO critical section for values*/
 #if PL_HAS_BLUETOOTH
 /* Bluetooth stdio */
-static CLS1_ConstStdIOType BT_stdio = { (CLS1_StdIO_In_FctType) BT1_StdIOReadChar, /* stdin */
-(CLS1_StdIO_OutErr_FctType) BT1_StdIOSendChar, /* stdout */
-(CLS1_StdIO_OutErr_FctType) BT1_StdIOSendChar, /* stderr */
-BT1_StdIOKeyPressed /* if input is not empty */
+static CLS1_ConstStdIOType BT_stdio = {
+		(CLS1_StdIO_In_FctType) BT1_StdIOReadChar, /* stdin */
+		(CLS1_StdIO_OutErr_FctType) BT1_StdIOSendChar, /* stdout */
+		(CLS1_StdIO_OutErr_FctType) BT1_StdIOSendChar, /* stderr */
+		BT1_StdIOKeyPressed /* if input is not empty */
 };
 #endif
 //---------------------------------------------------------------------------
@@ -67,7 +68,6 @@ typedef struct SensorFctType_ {
 	bool (*GetVal)(void);
 } SensorFctType;
 
-
 #define MAX_SENSOR_VALUE  ((SensorTimeType)-1)
 
 /* calibration min/max values */
@@ -82,31 +82,25 @@ static SensorTimeType SensorCalibrated[REF_NOF_SENSORS]; /* 0 means white/min va
 static SensorTimeType weightedValue;
 static SensorTimeType RFSSum;
 
-void saveToFlash()
-{
+void saveToFlash() {
 	refState = REF_STATE_NOT_CALIBRATED;
-	while(refState != REF_STATE_READY)
-	{
-	REF_StateMachine();
+	while (refState != REF_STATE_READY) {
+		REF_StateMachine();
 	}
 	//int a = sizeof(SensorCalibMinMax);
 	NVMC_SaveReflectanceData(&SensorCalibMinMax, sizeof(SensorCalibMinMax));
 }
-bool loadFromFlash()
-{
-	uint16_t* a = (uint16_t*)NVMC_GetReflectanceData();
-	for(int i=0;i<REF_NOF_SENSORS;i++)
-	{
-		SensorCalibMinMax.minVal[i]=*(a+i);
-		SensorCalibMinMax.maxVal[i]=*(a+REF_NOF_SENSORS+i);
-	}
-	refState = REF_STATE_READY;
-	if (SensorCalibMinMax.minVal[1]>10 && SensorCalibMinMax.minVal[1]< 2000)
-	{
+bool loadFromFlash() {
+	uint16_t* a = (uint16_t*) NVMC_GetReflectanceData();
+	if (a != NULL) {
+		for (int i = 0; i < REF_NOF_SENSORS; i++) {
+			SensorCalibMinMax.minVal[i] = *(a + i);
+			SensorCalibMinMax.maxVal[i] = *(a + REF_NOF_SENSORS + i);
+		}
+		refState = REF_STATE_READY;
 		return TRUE;
-	}
-	else
-	{
+	} else {
+
 		return FALSE;
 	}
 
@@ -190,11 +184,12 @@ static bool S6_GetVal(void) {
 	return IR6_GetVal();
 }
 
-static const SensorFctType SensorFctArray[REF_NOF_SENSORS] = { { S1_SetOutput, S1_SetInput,
-		S1_SetVal, S1_GetVal }, { S2_SetOutput, S2_SetInput, S2_SetVal, S2_GetVal }, { S3_SetOutput,
-		S3_SetInput, S3_SetVal, S3_GetVal }, { S4_SetOutput, S4_SetInput, S4_SetVal, S4_GetVal }, {
-		S5_SetOutput, S5_SetInput, S5_SetVal, S5_GetVal }, { S6_SetOutput, S6_SetInput, S6_SetVal,
-		S6_GetVal }, };
+static const SensorFctType SensorFctArray[REF_NOF_SENSORS] = { { S1_SetOutput,
+		S1_SetInput, S1_SetVal, S1_GetVal }, { S2_SetOutput, S2_SetInput,
+		S2_SetVal, S2_GetVal }, { S3_SetOutput, S3_SetInput, S3_SetVal,
+		S3_GetVal }, { S4_SetOutput, S4_SetInput, S4_SetVal, S4_GetVal }, {
+		S5_SetOutput, S5_SetInput, S5_SetVal, S5_GetVal }, { S6_SetOutput,
+		S6_SetInput, S6_SetVal, S6_GetVal }, };
 
 static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
 	uint8_t cnt; /* number of sensor */
@@ -211,6 +206,7 @@ static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
 	}
 	WAIT1_Waitus(50); /* give some time to charge the capacitor */
 	(void) RefCnt_ResetCounter(timerHandle); /* reset timer counter */
+	FRTOS1_taskENTER_CRITICAL();
 	for (i = 0; i < REF_NOF_SENSORS; i++) {
 		SensorFctArray[i].SetInput(); /* turn I/O line as input */
 	}
@@ -229,12 +225,15 @@ static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
 				cnt++;
 			}
 		}
-		//SHELL_SendString((unsigned char*) raw[0]);
+//SHELL_SendString((unsigned char*) raw[0]);
 	} while (cnt != REF_NOF_SENSORS);
+	FRTOS1_taskEXIT_CRITICAL();
 	LED_IR_Off();
 }
 
-static void REF_CalibrateMinMax(SensorTimeType min[REF_NOF_SENSORS], SensorTimeType max[REF_NOF_SENSORS], SensorTimeType raw[REF_NOF_SENSORS]) {
+static void REF_CalibrateMinMax(SensorTimeType min[REF_NOF_SENSORS],
+		SensorTimeType max[REF_NOF_SENSORS],
+		SensorTimeType raw[REF_NOF_SENSORS]) {
 	int i;
 
 	REF_MeasureRaw(raw);
@@ -248,7 +247,8 @@ static void REF_CalibrateMinMax(SensorTimeType min[REF_NOF_SENSORS], SensorTimeT
 	}
 }
 
-static void ReadCalibrated(SensorTimeType calib[REF_NOF_SENSORS], SensorTimeType raw[REF_NOF_SENSORS]) {
+static void ReadCalibrated(SensorTimeType calib[REF_NOF_SENSORS],
+		SensorTimeType raw[REF_NOF_SENSORS]) {
 	int i;
 	int32_t x, denominator;
 	int32_t avg_calc = 0;  //wird benötigt um avg zu berechnen, uint16 zu klein
@@ -260,7 +260,8 @@ static void ReadCalibrated(SensorTimeType calib[REF_NOF_SENSORS], SensorTimeType
 		x = 0;
 		denominator = SensorCalibMinMax.maxVal[i] - SensorCalibMinMax.minVal[i];
 		if (denominator != 0) {
-			x = (((int32_t) raw[i] - SensorCalibMinMax.minVal[i]) * 1000) / denominator;
+			x = (((int32_t) raw[i] - SensorCalibMinMax.minVal[i]) * 1000)
+					/ denominator;
 		}
 		if (x < 0) {
 			x = 0;
@@ -282,8 +283,11 @@ static void REF_Measure(void) {
 }
 
 static uint8_t PrintHelp(const CLS1_StdIOType *io) {
-	CLS1_SendHelpStr((unsigned char*) "ref", (unsigned char*) "Group of Reflectance commands\r\n", io->stdOut);
-	CLS1_SendHelpStr((unsigned char*) "  help|status", (unsigned char*) "Print help or status information\r\n", io->stdOut);
+	CLS1_SendHelpStr((unsigned char*) "ref",
+			(unsigned char*) "Group of Reflectance commands\r\n", io->stdOut);
+	CLS1_SendHelpStr((unsigned char*) "  help|status",
+			(unsigned char*) "Print help or status information\r\n",
+			io->stdOut);
 	return ERR_OK;
 }
 
@@ -311,12 +315,15 @@ static uint8_t PrintStatus(const CLS1_StdIOType *io) {
 	unsigned char buf[24];
 	int i;
 
-	CLS1_SendStatusStr((unsigned char*) "reflectance", (unsigned char*) "\r\n", io->stdOut);
+	CLS1_SendStatusStr((unsigned char*) "reflectance", (unsigned char*) "\r\n",
+			io->stdOut);
 
-	CLS1_SendStatusStr((unsigned char*) "  state", REF_GetStateString(), io->stdOut);
+	CLS1_SendStatusStr((unsigned char*) "  state", REF_GetStateString(),
+			io->stdOut);
 	CLS1_SendStr((unsigned char*) "\r\n", io->stdOut);
 
-	CLS1_SendStatusStr((unsigned char*) "  raw val", (unsigned char*) "", io->stdOut);
+	CLS1_SendStatusStr((unsigned char*) "  raw val", (unsigned char*) "",
+			io->stdOut);
 	for (i = 0; i < REF_NOF_SENSORS; i++) {
 		if (i == 0) {
 			CLS1_SendStr((unsigned char*) "0x", io->stdOut);
@@ -329,7 +336,8 @@ static uint8_t PrintStatus(const CLS1_StdIOType *io) {
 	}
 	CLS1_SendStr((unsigned char*) "\r\n", io->stdOut);
 
-	CLS1_SendStatusStr((unsigned char*) "  min val", (unsigned char*) "", io->stdOut);
+	CLS1_SendStatusStr((unsigned char*) "  min val", (unsigned char*) "",
+			io->stdOut);
 	for (i = 0; i < REF_NOF_SENSORS; i++) {
 		if (i == 0) {
 			CLS1_SendStr((unsigned char*) "0x", io->stdOut);
@@ -341,7 +349,8 @@ static uint8_t PrintStatus(const CLS1_StdIOType *io) {
 		CLS1_SendStr(buf, io->stdOut);
 	}
 	CLS1_SendStr((unsigned char*) "\r\n", io->stdOut);
-	CLS1_SendStatusStr((unsigned char*) "  max val", (unsigned char*) "", io->stdOut);
+	CLS1_SendStatusStr((unsigned char*) "  max val", (unsigned char*) "",
+			io->stdOut);
 	for (i = 0; i < REF_NOF_SENSORS; i++) {
 		if (i == 0) {
 			CLS1_SendStr((unsigned char*) "0x", io->stdOut);
@@ -354,7 +363,8 @@ static uint8_t PrintStatus(const CLS1_StdIOType *io) {
 	}
 	CLS1_SendStr((unsigned char*) "\r\n", io->stdOut);
 
-	CLS1_SendStatusStr((unsigned char*) "  calib val", (unsigned char*) "", io->stdOut);
+	CLS1_SendStatusStr((unsigned char*) "  calib val", (unsigned char*) "",
+			io->stdOut);
 	for (i = 0; i < REF_NOF_SENSORS; i++) {
 		if (i == 0) {
 			CLS1_SendStr((unsigned char*) "0x", io->stdOut);
@@ -369,8 +379,10 @@ static uint8_t PrintStatus(const CLS1_StdIOType *io) {
 	return ERR_OK;
 }
 
-byte REF_ParseCommand(const unsigned char *cmd, bool *handled, const CLS1_StdIOType *io) {
-	if (UTIL1_strcmp((char*)cmd, CLS1_CMD_HELP) == 0 || UTIL1_strcmp((char*)cmd, "ref help") == 0) {
+byte REF_ParseCommand(const unsigned char *cmd, bool *handled,
+		const CLS1_StdIOType *io) {
+	if (UTIL1_strcmp((char*)cmd, CLS1_CMD_HELP) == 0
+			|| UTIL1_strcmp((char*)cmd, "ref help") == 0) {
 		*handled = TRUE;
 		return PrintHelp(io);
 	} else if ((UTIL1_strcmp((char*)cmd, CLS1_CMD_STATUS) == 0)
@@ -386,17 +398,18 @@ void REF_StateMachine(void) {
 
 	switch (refState) {
 	case REF_STATE_INIT:
-		SHELL_SendString((unsigned char*) "INFO: No calibration data present.\r\n");
+		SHELL_SendString(
+				(unsigned char*) "INFO: No calibration data present.\r\n");
 		refState = REF_STATE_NOT_CALIBRATED;
-	//	break;
+//	break;
 
 	case REF_STATE_NOT_CALIBRATED:
 		REF_MeasureRaw(SensorRaw);
 //		if (EVNT_EventIsSet(EVNT_REF_START_STOP_CALIBRATION)) {
 //			EVNT_ClearEvent(EVNT_REF_START_STOP_CALIBRATION);
 //			refState = REF_STATE_START_CALIBRATION;
-	//		break;
-	//	}
+//		break;
+//	}
 //		break;
 
 	case REF_STATE_START_CALIBRATION:
@@ -410,19 +423,21 @@ void REF_StateMachine(void) {
 //		break;
 
 	case REF_STATE_CALIBRATING:
-		REF_CalibrateMinMax(SensorCalibMinMax.minVal, SensorCalibMinMax.maxVal, SensorRaw);
+		REF_CalibrateMinMax(SensorCalibMinMax.minVal, SensorCalibMinMax.maxVal,
+				SensorRaw);
 		MOTS_SetSpeedPercent((MOT_SpeedPercent) 10);
 		MOTS_SetDirection((MOT_Direction) MOT_DIR_BACKWARD);
 		FRTOS1_vTaskDelay(1000);
 		MOTS_SetSpeedPercent((MOT_SpeedPercent) 0);
-		REF_CalibrateMinMax(SensorCalibMinMax.minVal, SensorCalibMinMax.maxVal, SensorRaw);
+		REF_CalibrateMinMax(SensorCalibMinMax.minVal, SensorCalibMinMax.maxVal,
+				SensorRaw);
 		refState = REF_STATE_STOP_CALIBRATION;
 //		break;
 
 	case REF_STATE_STOP_CALIBRATION:
 		SHELL_SendString((unsigned char*) "...stopping calibration.\r\n");
 		refState = REF_STATE_READY;
-	//	break;
+//	break;
 
 	case REF_STATE_READY:
 		REF_Measure();

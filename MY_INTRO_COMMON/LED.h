@@ -11,39 +11,6 @@
 #include "Platform.h"
 
 #if PL_NOF_LEDS >= 1
- #include "LED_BLUE.h"
-  #define LED_BLUE_On()     LED_BLUE_ClrVal();
-    /*!< Turn LED 1 on */
-  #define LED_BLUE_Off()    LED_BLUE_SetVal();
-    /*!< Turn LED 1 off */
-  #define LED_BLUE_Neg()    LED_BLUE_NegVal()
-    /*!< Toggle LED 1 */
-  #define LED_BLUE_Get()    LED_BLUE_GetVal()
-    /*!< Return TRUE if LED is on, FALSE otherwise */
-  #define LED_BLUE_Put(val) LED_BLUE_PutVal(val)
-    /*!< Turn LED on or off */
-  #define LED_BLUE_Init()   /* do nothing */
-    /*!< Initialize LED */
-  #define LED_BLUE_Deinit() /* do nothing */
-    /*!< De-Initialize LED */
-#else
-  #define LED_BLUE_On()     /* do nothing */
-    /*!< Turn LED 1 on */
-  #define LED_BLUE_Off()    /* do nothing */
-    /*!< Turn LED 1 off */
-  #define LED_BLUE_Neg()    /* do nothing */
-    /*!< Toggle LED 1 */
-  #define LED_BLUE_Get()  0 /* do nothing */
-    /*!< Return TRUE if LED is on, FALSE otherwise */
-  #define LED_BLUE_Put(val) /* do nothing */
-    /*!< Turn LED 1 on or off */
-  #define LED_BLUE_Init()   /* do nothing */
-    /*!< Initialize LED 1 */
-  #define LED_BLUE_Deinit() /* do nothing */
-    /*!< De-Initialize LED 1 */
-#endif
-
-#if PL_NOF_LEDS >= 2
   #include "LED_GREEN.h"
   #define LED_GREEN_On()     LED_GREEN_ClrVal();
     /*!< Turn LED 1 on */
@@ -74,6 +41,41 @@
     /*!< Initialize LED 2 */
   #define LED_GREEN_Deinit() /* do nothing */
     /*!< De-Initialize LED 2 */
+#endif
+
+
+#if PL_NOF_LEDS >= 2
+
+ #include "LED_BLUE.h"
+  #define LED_BLUE_On()     LED_BLUE_ClrVal();
+    /*!< Turn LED 1 on */
+  #define LED_BLUE_Off()    LED_BLUE_SetVal();
+    /*!< Turn LED 1 off */
+  #define LED_BLUE_Neg()    LED_BLUE_NegVal()
+    /*!< Toggle LED 1 */
+  #define LED_BLUE_Get()    LED_BLUE_GetVal()
+    /*!< Return TRUE if LED is on, FALSE otherwise */
+  #define LED_BLUE_Put(val) LED_BLUE_PutVal(val)
+    /*!< Turn LED on or off */
+  #define LED_BLUE_Init()   /* do nothing */
+    /*!< Initialize LED */
+  #define LED_BLUE_Deinit() /* do nothing */
+    /*!< De-Initialize LED */
+#else
+  #define LED_BLUE_On()     /* do nothing */
+    /*!< Turn LED 1 on */
+  #define LED_BLUE_Off()    /* do nothing */
+    /*!< Turn LED 1 off */
+  #define LED_BLUE_Neg()    /* do nothing */
+    /*!< Toggle LED 1 */
+  #define LED_BLUE_Get()  0 /* do nothing */
+    /*!< Return TRUE if LED is on, FALSE otherwise */
+  #define LED_BLUE_Put(val) /* do nothing */
+    /*!< Turn LED 1 on or off */
+  #define LED_BLUE_Init()   /* do nothing */
+    /*!< Initialize LED 1 */
+  #define LED_BLUE_Deinit() /* do nothing */
+    /*!< De-Initialize LED 1 */
 #endif
 
 #if PL_NOF_LEDS >= 3

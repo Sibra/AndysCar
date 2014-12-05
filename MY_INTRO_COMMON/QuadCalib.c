@@ -119,10 +119,11 @@ static uint8_t Tune(const CLS1_StdIOType *io, uint8_t channel, MOT_MotorDevice *
   uint8_t buf[48];
   uint8_t res;
  
+  MOT_SetSpeedPercent(motorHandle, TUNE_MOTOR_PERCENT);
 #if PL_HAS_DRIVE
   DRV_SetMode(DRV_MODE_NONE); /* turn off drive mode */
 #endif
-  MOT_SetSpeedPercent(motorHandle, TUNE_MOTOR_PERCENT);
+
   CLS1_SendStr((uint8_t*)"Tuning channel...\r\n", io->stdOut);
   res = ERR_FAILED;
   for(i=0,dac=0;dac<=MCP4728_MAX_DAC_VAL;i++) {
@@ -160,7 +161,7 @@ static uint8_t Tune(const CLS1_StdIOType *io, uint8_t channel, MOT_MotorDevice *
       dac += 0x1; /* smaller increase */
     } else {
       CLS1_SendStr((uint8_t*)"No signal\r\n", io->stdErr);
-      dac += 0x10; /* larger increase */
+      dac += 0x05; /* larger increase */
     }
   } /* for finding DAC value */
   MOT_SetSpeedPercent(motorHandle, 0); /* turn off again */

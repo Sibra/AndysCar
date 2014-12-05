@@ -30,7 +30,9 @@ void TMR_OnInterrupt(void) {
 	#if PL_HAS_TRIGGER
 	  TRG_IncTick();
 	#endif
+#if PL_HAS_MOTOR_TACHO
 	  TACHO_Sample();
+#endif
 }
 void TMR_Init(void) {
   /* nothing needed right now */

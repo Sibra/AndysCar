@@ -76,6 +76,17 @@
 #if PL_HAS_PID
 #include "Pid.h"
 #endif
+#if PL_HAS_ACCEL
+#include "Accel.h"
+#endif
+#if PL_HAS_RADIO
+#include "RNET1.h"
+#include "RNet_App.h"
+#include "RNetConf.h"
+#endif
+#if RNET_CONFIG_REMOTE_STDIO
+#include "RStdIO.h"
+#endif
 
 static portTASK_FUNCTION(HeartBeat, pvParameters) {
 	for (;;) {
@@ -160,6 +171,9 @@ void PL_Init(void) {
 #if PL_HAS_PID
   PID_Init();
 #endif
+#if PL_HAS_RADIO
+  RNETA_Init();
+#endif
 }
 
 void PL_Deinit(void) {
@@ -228,6 +242,8 @@ void PL_Deinit(void) {
 #if PL_HAS_PID
   PID_Deinit();
 #endif
-
+#if PL_HAS_RADIO
+  RNETA_Deinit();
+#endif
 
 }

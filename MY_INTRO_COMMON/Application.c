@@ -45,14 +45,52 @@
 #if PL_HAS_CONFIG_NVM
 #include "NVM_Config.h"
 #endif
+#if PL_HAS_ACCEL
+  #include "Accel.h"
+#endif
+#if PL_HAS_RADIO
+#include "RNET1.h"
+#include "RNet_App.h"
+#include "RNetConf.h"
+#include "RApp.h"
+#endif
+#if RNET_CONFIG_REMOTE_STDIO
+#include "RStdIO.h"
+#endif
+#include "Stadium.h"
+
+#define APP_dstAddr 			(0xFF)
+#define RPHY_PACKET_FLAGS_NONE 	(0)
+
+
 static uint8_t lastKeyPressed;
 
+void APP_DebugPrint(unsigned char *str) {
+#if PL_HAS_SHELL
+  CLS1_SendStr(str, CLS1_GetStdio()->stdOut);
+#endif
+}
+
+
+StadiumMode state=NONE;
+StadiumMode getState()
+{
+	return state;
+}
+uint8_t remoteMode = 0;
+uint8_t getRemoteMode()
+{
+	return remoteMode;
+}
 static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 {
 	static int cntr = 0;
 	switch (event) {
 	case EVNT_INIT:
 		init_function;
+#if PL_HAS_ACCEL
+		ACCEL_LowLevelInit();
+#endif
 #if PL_IS_ROBO
 		SHELL_SendString((unsigned char*) "Hello ROBO\r\n");
 #endif
@@ -72,7 +110,10 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 #if PL_NOF_KEYS >= 1
 	case EVNT_SW1_PRESSED:
 		lastKeyPressed = 1;
-		EVNT_SetEvent(EVNT_REF_START_STOP_CALIBRATION);
+#if !PL_HAS_STADIUM
+		state=FIGHT;
+		RAPP_SendPayloadDataBlock(&state, sizeof(state), RAPP_MSG_TYPE_REMOTE_STATE, APP_dstAddr, RPHY_PACKET_FLAGS_NONE);
+#endif
 #if PL_HAS_SHELL
 		//CLS1_SendStr("SW1 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
 		SHELL_SendString((unsigned char*) "SW1 PRESSED!\r\n");
@@ -93,7 +134,9 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 //---------------------------------------------------------------
 #if PL_NOF_KEYS >= 2
 		case EVNT_SW2_PRESSED:
+			remoteMode = 1;
 		lastKeyPressed = 2;
+
 #if PL_HAS_SHELL
 		CLS1_SendStr("SW2 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
 #endif
@@ -108,6 +151,7 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 //---------------------------------------------------------------
 #if PL_NOF_KEYS >= 3
 		case EVNT_SW3_PRESSED:
+			remoteMode=0;
 		lastKeyPressed = 3;
 #if PL_HAS_SHELL
 		CLS1_SendStr("SW3 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
@@ -123,6 +167,11 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 //---------------------------------------------------------------
 #if PL_NOF_KEYS >= 4
 		case EVNT_SW4_PRESSED:
+#if !PL_HAS_STADIUM
+		state=STOP;
+
+		RAPP_SendPayloadDataBlock(&state, sizeof(state), RAPP_MSG_TYPE_REMOTE_STATE, APP_dstAddr, RPHY_PACKET_FLAGS_NONE);
+#endif
 		lastKeyPressed = 4;
 #if PL_HAS_SHELL
 		CLS1_SendStr("SW4 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
@@ -139,6 +188,10 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 #if PL_NOF_KEYS >= 5
 		case EVNT_SW5_PRESSED:
 		lastKeyPressed = 5;
+#if !PL_HAS_STADIUM
+		state=NEED_CALIB;
+		RAPP_SendPayloadDataBlock(&state, sizeof(state), RAPP_MSG_TYPE_REMOTE_STATE, APP_dstAddr, RPHY_PACKET_FLAGS_NONE);
+#endif
 #if PL_HAS_SHELL
 		CLS1_SendStr("SW5 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
 #endif
@@ -154,6 +207,11 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 #if PL_NOF_KEYS >= 6
 		case EVNT_SW6_PRESSED:
 		lastKeyPressed = 6;
+		remoteMode = 0;
+#if !PL_HAS_STADIUM
+		state=REMOTE_CONTROL;
+		RAPP_SendPayloadDataBlock(&state, sizeof(state), RAPP_MSG_TYPE_REMOTE_STATE, APP_dstAddr, RPHY_PACKET_FLAGS_NONE);
+#endif
 #if PL_HAS_SHELL
 		CLS1_SendStr("SW6 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
 #endif
@@ -169,6 +227,10 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 #if PL_NOF_KEYS >= 7
 		case EVNT_SW7_PRESSED:
 		lastKeyPressed = 7;
+#if !PL_HAS_STADIUM
+		state=FIND;
+		RAPP_SendPayloadDataBlock(&state, sizeof(state), RAPP_MSG_TYPE_REMOTE_STATE, APP_dstAddr, RPHY_PACKET_FLAGS_NONE);
+#endif
 #if PL_HAS_SHELL
 		CLS1_SendStr("SW7 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
 #endif
@@ -185,11 +247,16 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 	}
 }
 
+
+
+
 static portTASK_FUNCTION(AppLoop, pvParameters) {
 	for (;;) {
+		uint8_t val8=29;
 		EVNT_HandleEvent(APP_EventHandler);
 		KEY_Scan();
-		FRTOS1_taskYIELD();
+
+		FRTOS1_vTaskDelay(20);
 	}
 }
 
@@ -209,4 +276,5 @@ void APP_Start(void) {
 		;
 	PL_Deinit();
 }
+
 

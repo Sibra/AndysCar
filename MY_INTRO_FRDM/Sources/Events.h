@@ -45,27 +45,26 @@
 #include "PE_Const.h"
 #include "IO_Map.h"
 #include "CS1.h"
-#include "LED_BLUE.h"
-#include "BitIoLdd1.h"
 #include "LED_GREEN.h"
 #include "BitIoLdd2.h"
 #include "LED_RED.h"
 #include "BitIoLdd3.h"
 #include "WAIT1.h"
 #include "SW1.h"
-#include "ExtIntLdd1.h"
 #include "SW2.h"
 #include "ExtIntLdd2.h"
-#include "SW3.h"
 #include "ExtIntLdd3.h"
+#include "SW3.h"
+#include "BitIoLdd8.h"
 #include "PTA.h"
 #include "SW4.h"
-#include "ExtIntLdd4.h"
 #include "SW5.h"
-#include "BitIoLdd8.h"
+#include "BitIoLdd10.h"
 #include "SW6.h"
-#include "BitIoLdd9.h"
 #include "SW7.h"
+#include "ExtIntLdd6.h"
+#include "AD1.h"
+#include "AdcLdd1.h"
 #include "ExtIntLdd5.h"
 #include "CLS1.h"
 #include "UTIL1.h"
@@ -74,6 +73,18 @@
 #include "UTIL2.h"
 #include "FRTOS1.h"
 #include "RTOSCNTRLDD1.h"
+#include "MMA1.h"
+#include "I2C1.h"
+#include "GI2C1.h"
+#include "RNET1.h"
+#include "RF1.h"
+#include "CE1.h"
+#include "BitIoLdd4.h"
+#include "BitIoLdd11.h"
+#include "CSN1.h"
+#include "BitIoLdd5.h"
+#include "SM1.h"
+#include "SMasterLdd1.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -223,6 +234,19 @@ void SW1_OnInterrupt(void);
 /* ===================================================================*/
 void Cpu_OnNMIINT(void);
 
+
+void GI2C1_OnError(void);
+/*
+** ===================================================================
+**     Event       :  GI2C1_OnError (module Events)
+**
+**     Component   :  GI2C1 [GenericI2C]
+**     Description :
+**         Event called in case of error condition
+**     Parameters  : None
+**     Returns     : Nothing
+** ===================================================================
+*/
 
 /* END Events */
 

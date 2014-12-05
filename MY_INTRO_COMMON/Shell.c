@@ -52,6 +52,19 @@
 #if PL_HAS_DRIVE
 #include "Drive.h"
 #endif
+#if PL_HAS_ACCEL
+#include "Accel.h"
+#include "MMA1.h"
+#endif
+#if PL_HAS_RADIO
+#include "RNET1.h"
+#include "RNet_App.h"
+#include "RNetConf.h"
+#endif
+#if RNET_CONFIG_REMOTE_STDIO
+#include "RStdIO.h"
+#endif
+
 /* forward declaration */
 static uint8_t SHELL_ParseCommand(const unsigned char *cmd, bool *handled, const CLS1_StdIOType *io);
 
@@ -100,10 +113,18 @@ static const CLS1_ParseCommandCallback CmdParserTable[] =
   TACHO_ParseCommand,
 #endif
 #if PL_HAS_DRIVE
-  DRV_ParseCommand,
+  //DRV_ParseCommand,
 #endif
 #if PL_HAS_PID
   PID_ParseCommand,
+#endif
+#if PL_HAS_ACCEL
+
+  MMA1_ParseCommand,
+#endif
+#if PL_HAS_RADIO
+  RNET1_ParseCommand,
+  RNETA_ParseCommand,
 #endif
   NULL /* Sentinel */
 };
@@ -212,6 +233,10 @@ static portTASK_FUNCTION(ShellTask, pvParameters) {
 #if CLS1_DEFAULT_SERIAL
   CLS1_ConstStdIOTypePtr ioLocal = CLS1_GetStdio();  
 #endif
+#if RNET_CONFIG_REMOTE_STDIO
+  static unsigned char radio_cmd_buf[48];
+  CLS1_ConstStdIOType *ioRemote = RSTDIO_GetStdioRx();
+#endif
   
   (void)pvParameters; /* not used */
 #if PL_HAS_USB_CDC
@@ -224,6 +249,9 @@ static portTASK_FUNCTION(ShellTask, pvParameters) {
 #if CLS1_DEFAULT_SERIAL
   (void)CLS1_ParseWithCommandTable((unsigned char*)CLS1_CMD_HELP, ioLocal, CmdParserTable);
 #endif
+#if RNET_CONFIG_REMOTE_STDIO
+  radio_cmd_buf[0] = '\0';
+#endif
   for(;;) {
 #if CLS1_DEFAULT_SERIAL
     (void)CLS1_ReadAndParseWithCommandTable(localConsole_buf, sizeof(localConsole_buf), ioLocal, CmdParserTable);
@@ -233,6 +261,10 @@ static portTASK_FUNCTION(ShellTask, pvParameters) {
 #endif
 #if PL_HAS_BLUETOOTH
     (void)CLS1_ReadAndParseWithCommandTable(bluetooth_buf, sizeof(bluetooth_buf), &BT_stdio, CmdParserTable);
+#endif
+#if RNET_CONFIG_REMOTE_STDIO
+    RSTDIO_Print(ioLocal); /* dispatch incoming messages */
+    (void)CLS1_ReadAndParseWithCommandTable(radio_cmd_buf, sizeof(radio_cmd_buf), ioRemote, CmdParserTable);
 #endif
 #if PL_HAS_SHELL_QUEUE
     {

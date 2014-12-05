@@ -16,7 +16,7 @@
 #define PL_IS_FRDM   (defined(PL_BOARD_IS_FRDM))
 #define PL_IS_ROBO  (defined(PL_BOARD_IS_ROBO))
 
-#define PL_HAS_AUTOCALIB		(1 && PL_IS_ROBO)
+#define PL_HAS_AUTOCALIB		(0 && PL_IS_ROBO)
 #define RunMode					(1 && PL_IS_ROBO)
 #define PL_HAS_STADIUM			(1 && PL_IS_ROBO)
 // Freedom and Robo
@@ -28,7 +28,7 @@
 #define PL_HAS_KBI            	(1)
 #define PL_HAS_MEALY			(0)
 #define PL_HAS_TRIGGER			(1)
-#define PL_HAS_HEARTBEAT		(1)
+#define PL_HAS_HEARTBEAT		(0)
 #define PL_HAS_SHELL			(1)
 #define PL_HAS_BUZZER			(1 && PL_IS_ROBO)
 #define PL_HAS_DEBOUNCE			(1 && PL_HAS_KEYS)
@@ -46,15 +46,15 @@
 #define PL_HAS_MOTOR_TACHO		(1 && PL_IS_ROBO)
 #define PL_HAS_MOTOR_QUAD		(1 && PL_IS_ROBO)
 #define PL_HAS_ULTRASONIC		(1 && PL_IS_ROBO)
-#define PL_HAS_ACCEL          	(0)
-#define PL_HAS_RADIO          	(0)
+#define PL_HAS_RADIO          	(1)
 #define PL_HAS_QUADRATURE		(1 && PL_IS_ROBO)
-#define PL_HAS_DRIVE			(1 && PL_IS_ROBO)
+#define PL_HAS_DRIVE			(0 && PL_IS_ROBO)
 #define PL_HAS_PID				(1 && PL_IS_ROBO)
+#define PL_HAS_ACCEL			(1 && PL_IS_FRDM)
 // Freedomboard
 #if PL_IS_FRDM
 
-	#define PL_NOF_LEDS       	(2)
+	#define PL_NOF_LEDS       	(1)
 	#define PL_NOF_KEYS			(7)
 
 	#define PL_KEY_POLLED_KEY1  (0)

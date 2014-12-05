@@ -35,7 +35,7 @@
 #include "PE_Const.h"
 #include "IO_Map.h"
 #include "CS1.h"
-#include "LED_BLUE.h"
+#include "LED_GREEN.h"
 #include "BitIoLdd1.h"
 #include "WAIT1.h"
 #include "HF1.h"
@@ -96,6 +96,16 @@
 #include "IFsh1.h"
 #include "IntFlashLdd1.h"
 #include "TU_US.h"
+#include "RNET1.h"
+#include "RF1.h"
+#include "CE1.h"
+#include "BitIoLdd21.h"
+#include "CSN1.h"
+#include "BitIoLdd22.h"
+#include "IRQ1.h"
+#include "ExtIntLdd2.h"
+#include "SM2_nRF.h"
+#include "SMasterLdd1.h"
 #include "TRIG.h"
 
 #ifdef __cplusplus
@@ -248,6 +258,22 @@ void TU_US_OnChannel0(LDD_TUserData *UserDataPtr);
 ** ===================================================================
 */
 void QuadInt_OnInterrupt(void);
+
+void RNET1_OnRadioEvent(RNET1_RadioEvent event);
+/*
+** ===================================================================
+**     Event       :  RNET1_OnRadioEvent (module Events)
+**
+**     Component   :  RNET1 [RNet]
+**     Description :
+**         Event created for various radio states, like timeout, ack
+**         received, data sent, ...
+**     Parameters  :
+**         NAME            - DESCRIPTION
+**         event           - 
+**     Returns     : Nothing
+** ===================================================================
+*/
 
 /* END Events */
 
