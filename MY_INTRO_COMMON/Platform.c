@@ -76,6 +76,9 @@
 #if PL_HAS_PID
 #include "Pid.h"
 #endif
+#if PL_HAS_WATCHDOG
+  #include "Watchdog.h"
+#endif
 #if PL_HAS_ACCEL
 #include "Accel.h"
 #endif
@@ -174,6 +177,9 @@ void PL_Init(void) {
 #if PL_HAS_RADIO
   RNETA_Init();
 #endif
+#if PL_HAS_WATCHDOG
+  WDT_Init();
+#endif
 }
 
 void PL_Deinit(void) {
@@ -244,6 +250,9 @@ void PL_Deinit(void) {
 #endif
 #if PL_HAS_RADIO
   RNETA_Deinit();
+#endif
+#if PL_HAS_WATCHDOG
+  WDT_Deinit();
 #endif
 
 }

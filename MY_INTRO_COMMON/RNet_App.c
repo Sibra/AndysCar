@@ -146,7 +146,7 @@ static portTASK_FUNCTION(RadioTask, pvParameters) {
   appState = RNETA_NONE; /* set state machine state */
   for(;;) {
     Process(); /* process state machine and radio in/out queues */
-    FRTOS1_vTaskDelay(2/portTICK_RATE_MS);
+    FRTOS1_vTaskDelay(10/portTICK_RATE_MS);
   }
 }
 

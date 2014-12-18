@@ -34,6 +34,8 @@
 #include "NVM_Config.h"
 #include "IFsh1.h"
 #endif
+#include "Drive.h"
+#include "Pid.h"
 #define REF_NOF_SENSORS 6 /* number of sensors */
 /*!TODO critical section for values*/
 #if PL_HAS_BLUETOOTH
@@ -46,9 +48,12 @@ static CLS1_ConstStdIOType BT_stdio = {
 };
 #endif
 //---------------------------------------------------------------------------
-
+TaskHandle_t xHandle;
 static UndergroundType stadium = ug_unknown;
-
+TaskHandle_t getTaskRefHandle()
+{
+	return xHandle;
+}
 typedef enum {
 	REF_STATE_INIT,
 	REF_STATE_NOT_CALIBRATED,
@@ -197,7 +202,7 @@ static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
 	static int black = 0;
 
 	LED_IR_On(); /* IR LED's on */
-	WAIT1_Waitus(200); /*! \todo adjust time as needed */ //warten bis IR brennen
+	 /*! \todo adjust time as needed */ //warten bis IR brennen
 
 	for (i = 0; i < REF_NOF_SENSORS; i++) {
 		SensorFctArray[i].SetOutput(); /* turn I/O line as output */
@@ -228,7 +233,7 @@ static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
 //SHELL_SendString((unsigned char*) raw[0]);
 	} while (cnt != REF_NOF_SENSORS);
 	FRTOS1_taskEXIT_CRITICAL();
-	LED_IR_Off();
+	//LED_IR_Off();
 }
 
 static void REF_CalibrateMinMax(SensorTimeType min[REF_NOF_SENSORS],
@@ -425,10 +430,10 @@ void REF_StateMachine(void) {
 	case REF_STATE_CALIBRATING:
 		REF_CalibrateMinMax(SensorCalibMinMax.minVal, SensorCalibMinMax.maxVal,
 				SensorRaw);
-		MOTS_SetSpeedPercent((MOT_SpeedPercent) 10);
-		MOTS_SetDirection((MOT_Direction) MOT_DIR_BACKWARD);
+		PID_Start();
+		DRV_SetSpeed(-500, -500);
 		FRTOS1_vTaskDelay(1000);
-		MOTS_SetSpeedPercent((MOT_SpeedPercent) 0);
+		DRV_SetSpeed(0, 0);
 		REF_CalibrateMinMax(SensorCalibMinMax.minVal, SensorCalibMinMax.maxVal,
 				SensorRaw);
 		refState = REF_STATE_STOP_CALIBRATION;
@@ -449,13 +454,18 @@ void REF_StateMachine(void) {
 	} /* switch */
 }
 
-//static portTASK_FUNCTION(ReflTask, pvParameters) {
-//	(void) pvParameters; /* not used */
-//	for (;;) {
-//		REF_StateMachine();
-//		FRTOS1_vTaskDelay(10/portTICK_RATE_MS);
-//	}
-//}
+static portTASK_FUNCTION(ReflTask, pvParameters) {
+	(void) pvParameters; /* not used */
+	for (;;) {
+		vTaskSuspend( NULL );
+		for(;;)
+		{
+		getRefSum() ;
+		FRTOS1_taskYIELD();
+		}
+
+	}
+}
 SensorTimeType getRefSum() {
 	ReadCalibrated(SensorCalibrated, SensorRaw);
 	return RFSSum;
@@ -471,9 +481,9 @@ void REF_Init(void) {
 	refState = REF_STATE_INIT;
 	timerHandle = RefCnt_Init(NULL);
 	/*! \todo You might need to adjust priority or other task settings */
-//	if (FRTOS1_xTaskCreate(ReflTask, "Refl", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
-//		for (;;) {
-//		} /* error */
-//	}
+	//if (FRTOS1_xTaskCreate(ReflTask, "Refl", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, &xHandle) != pdPASS) {
+		//for (;;) {
+		//} /* error */
+	//}
 }
 #endif /* PL_HAS_LINE_SENSOR */

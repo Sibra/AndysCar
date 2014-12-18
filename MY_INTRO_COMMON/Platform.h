@@ -16,8 +16,7 @@
 #define PL_IS_FRDM   (defined(PL_BOARD_IS_FRDM))
 #define PL_IS_ROBO  (defined(PL_BOARD_IS_ROBO))
 
-#define PL_HAS_AUTOCALIB		(0 && PL_IS_ROBO)
-#define RunMode					(1 && PL_IS_ROBO)
+
 #define PL_HAS_STADIUM			(1 && PL_IS_ROBO)
 // Freedom and Robo
 #define PL_HAS_LED 				(1)
@@ -46,13 +45,14 @@
 #define PL_HAS_MOTOR_TACHO		(1 && PL_IS_ROBO)
 #define PL_HAS_MOTOR_QUAD		(1 && PL_IS_ROBO)
 #define PL_HAS_ULTRASONIC		(1 && PL_IS_ROBO)
-#define PL_HAS_RADIO          	(1)
+#define PL_HAS_RADIO          	(0)
 #define PL_HAS_QUADRATURE		(1 && PL_IS_ROBO)
-#define PL_HAS_DRIVE			(0 && PL_IS_ROBO)
+#define PL_HAS_DRIVE			(1 && PL_IS_ROBO)
 #define PL_HAS_PID				(1 && PL_IS_ROBO)
-#define PL_HAS_ACCEL			(1 && PL_IS_FRDM)
+#define PL_HAS_ACCEL			(0 && PL_IS_FRDM)
+#define PL_HAS_WATCHDOG			(0 && PL_IS_ROBO)
 // Freedomboard
-#if PL_IS_FRDM
+#if (1 && PL_IS_FRDM)
 
 	#define PL_NOF_LEDS       	(1)
 	#define PL_NOF_KEYS			(7)
@@ -64,15 +64,12 @@
 	#define PL_KEY_POLLED_KEY5  (1)
 	#define PL_KEY_POLLED_KEY6  (1)
 	#define PL_KEY_POLLED_KEY7  (0)
-
+#endif
 // Roboter
-#elif PL_IS_ROBO
 	#define PL_NOF_LEDS       	(1)
 	#define PL_NOF_KEYS			(1)
-	#define PL_KEY_POLLED_KEY1  (0)
-#else
+	#define PL_KEY_POLLED_KEY1  (1)
 //  #error "unknown configuration?"
-#endif
 
 void PL_Init(void);
 void PL_Deinit(void);

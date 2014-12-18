@@ -22,8 +22,9 @@
    * \param io Pointer to stdio handle
    * \return Error code, ERR_OK if everything was ok.
    */
+#include "FRTOS1.h"
   uint8_t REF_ParseCommand(const unsigned char *cmd, bool *handled, const CLS1_StdIOType *io);
-
+  TaskHandle_t getTaskRefHandle();
   #define REF_PARSE_COMMAND_ENABLED 1
 #else
   #define REF_PARSE_COMMAND_ENABLED 0

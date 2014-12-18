@@ -15,7 +15,9 @@
 #if PL_HAS_RTOS_TRACE
 #include "RTOSTRC1.h"
 #endif
-
+#if PL_HAS_WATCHDOG
+  #include "Watchdog.h"
+#endif
 
 static int32_t DRV_SpeedLeft, DRV_SpeedRight;
 
@@ -23,6 +25,7 @@ static int32_t DRV_SpeedLeft, DRV_SpeedRight;
 
 void DRV_SetSpeed(int32_t left, int32_t right) {
 	FRTOS1_taskENTER_CRITICAL();
+	PID_Start();
 	DRV_SpeedLeft = left;
 	DRV_SpeedRight = right;
 	FRTOS1_taskEXIT_CRITICAL();
@@ -34,12 +37,15 @@ static portTASK_FUNCTION(DriveTask, pvParameters) {
 
 	for (;;) {
 		/*! \todo extend this for your own needs and with a position PID */
+		FRTOS1_taskENTER_CRITICAL();
 		TACHO_CalcSpeed();
-		{
-			PID_Speed(TACHO_GetSpeed(TRUE), DRV_SpeedLeft, TRUE); /* left */
-			PID_Speed(TACHO_GetSpeed(FALSE), DRV_SpeedRight, FALSE); /* right */
-		}
-		FRTOS1_vTaskDelay(2/portTICK_RATE_MS);
+		PID_Speed(TACHO_GetSpeed(TRUE), DRV_SpeedLeft, TRUE); /* left */
+		PID_Speed(TACHO_GetSpeed(FALSE), DRV_SpeedRight, FALSE); /* right */
+		FRTOS1_taskEXIT_CRITICAL();
+#if PL_HAS_WATCHDOG
+    WDT_IncTaskCntr(WDT_TASK_ID_DRIVE, 10);
+#endif
+		FRTOS1_vTaskDelay(2);
 	} /* for */
 }
 
@@ -55,7 +61,7 @@ void DRV_Init(void) {
 			"Drive", /* task name for kernel awareness debugging */
 			configMINIMAL_STACK_SIZE, /* task stack size */
 			(void*)NULL, /* optional task startup argument */
-			tskIDLE_PRIORITY+2, /* initial priority */
+			tskIDLE_PRIORITY+4, /* initial priority */
 			(xTaskHandle*)NULL /* optional task handle to create */
 	) != pdPASS) {
 		/*lint -e527 */

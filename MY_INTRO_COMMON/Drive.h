@@ -20,7 +20,6 @@
  * \param[out] handled If command is handled by the parser
  * \param[in] io Std I/O handler of shell
  */
-uint8_t DRV_ParseCommand(const unsigned char *cmd, bool *handled, const CLS1_StdIOType *io);
 #endif
 
 /*!

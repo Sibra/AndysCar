@@ -31,211 +31,148 @@
 #endif
 #include "Drive.h"
 #include "Motor.h"
+#include "Watchdog.h"
+#include "Buzzer.h"
 #define TURNSPEEDFKT 2
 
-int16_t speedR=5000;
-int16_t speedL=5000;
-
-static StadiumMode StateMode = NEED_CALIB;
-
-//action movements-------------------------------------------------------------------
-void DRV_SetSpeed(int32_t left, int32_t right) {
-	PID_Speed(TACHO_GetSpeed(TRUE), left, TRUE); /* left */
-	PID_Speed(TACHO_GetSpeed(FALSE), right, FALSE); /* right */
-
-}
-void setState(StadiumMode state) {
-	StateMode = state;
-}
-void setStadiumSpeed(int16_t speed) {
-	speedR = speed;
-	speedL = speed;
-}
-
-void remoteControl(uint8_t speedType) {
-	uint8_t counter = 0;
-	if ((getRefSum() > 5000)) {
-		if (((speedType & 0xF0) >> 4 == 0x07) && ((speedType & 0x0F) == 0x07)) {
-			PID_Start();
-		}
-		TACHO_CalcSpeed();
-		DRV_SetSpeed(((int16_t) ((speedType & 0xF0) >> 4) - 0x07) * 800,
-				((int16_t) (speedType & 0x0F) - 0x07) * 800);
-	}
-	else  {
-		PID_Start();
-		counter=0;
-		while(StateMode == REMOTE_CONTROL && counter < 200)
-		{
-			TACHO_CalcSpeed();
-			PID_Speed(TACHO_GetSpeed(TRUE), -1000, TRUE); /* left */
-			PID_Speed(TACHO_GetSpeed(FALSE), -1000, FALSE); /* right */
-			counter++;
-			FRTOS1_vTaskDelay(2);
-		}
-	}
-#if 0
-	do {
-		TACHO_CalcSpeed();
-		DRV_SetSpeed(-speedL, -speedR);
-		FRTOS1_vTaskDelay(2);
-		counter++;
-	} while ((counter < 200 / (speedR / 100)) && (StateMode == FIGHT));
-#endif
-
-}
-#if PL_IS_ROBO
-static void turn(MOT_Turn_Direction dir) {
-	if (dir == MOT_TURN_LEFT) {
-		DRV_SetSpeed(-speedL, speedR);
-	} else {
-		DRV_SetSpeed(speedL, -speedR);
-	}
-}
-void FindMode() {
-	while(StateMode == FIND)
-	{
-	int counter = 0;
-	uint8_t buf[16];
-	uint16_t cm, us;
-	speedR=1500;
-	speedL=1500;
-	int enableUS = 0;
-	do {
-		PID_Start();
-		for(counter=0;counter<5;counter++)
-		{
-		TACHO_CalcSpeed();
-		DRV_SetSpeed(1500,-1500);
-		FRTOS1_vTaskDelay(2);
-		}
-
-		us = US_Measure_us();
-		cm = US_usToCentimeters(us, 22);
+int16_t speedR=6000;
+int16_t speedL=6000;
+int16_t turnSpeed=2800;
+uint16_t ref=0;
 
 
-	} while ((cm < 1) || (cm > 50));
-	counter=0;
-	PID_Start();
-	do {
-		TACHO_CalcSpeed();
-		DRV_SetSpeed(1500,-1500);
-		counter++;
-		FRTOS1_vTaskDelay(2);
-	} while (counter<100);
-	speedR=4000;
-	speedL=4000;
-	PID_Start();
-	while ((getRefSum() > 5000)  && (StateMode == FIND)) {
-		TACHO_CalcSpeed();
-		DRV_SetSpeed(speedL, speedR);
-		FRTOS1_vTaskDelay(2);
-	}
-	counter = 0;
-	PID_Start();
-	do {
-		TACHO_CalcSpeed();
-		DRV_SetSpeed(-1000, -1000);
-		FRTOS1_vTaskDelay(2);
-		counter++;
-	} while ((counter < 1000) && (StateMode == FIND));
-	}
-}
-
-void fightMode() {
-	while (StateMode == FIGHT) {
-		int counter = 0;
-		do {
-			TACHO_CalcSpeed();
-			DRV_SetSpeed(speedL, speedR);
-			FRTOS1_vTaskDelay(2);
-		} while ((getRefSum() > 5000) && (StateMode == FIGHT)); //fahren bis Rand
-		for (counter = 0; counter < 200; counter++) {
-			TACHO_CalcSpeed();
-			DRV_SetSpeed(-speedL, -speedR);
-			FRTOS1_vTaskDelay(2);
-			if (StateMode != FIGHT) {
-				return;
-			}
-		} // zurückfahren
-		for (counter = 0; counter < 100; counter++) {
-			TACHO_CalcSpeed();
-			DRV_SetSpeed(-speedL, speedR);
-			FRTOS1_vTaskDelay(2);
-			if (StateMode != FIGHT) {
-				return;
-			}
-		}
-		counter = 0;
-#if 1
-		do {
-			TACHO_CalcSpeed();
-			DRV_SetSpeed(-speedL, speedR);
-			FRTOS1_vTaskDelay(2);
-			counter++;
-		}while ((counter < 4000/(speedR/100)) && (StateMode == FIGHT));
-#endif
-	}
-}
 
 //RTOS-------------------------------------------------------------------------------
 
 static portTASK_FUNCTION(fight, pvParameters) {
 	(void) pvParameters; /* not used */
 	for (;;) {
-		switch (StateMode) {
+		saveToFlash();
+		//FRTOS1_vTaskResume(getTaskRefHandle());
+		for (;;) {
 
-		case STOP:
-			SHELL_SendString((unsigned char*) "INFO: Stopp.\r\n");
 
-			do {
-				PID_Start();
-				PID_Speed(0, 0, TRUE); /* left */
-				PID_Speed(0, 0, FALSE); /* right */
-				FRTOS1_vTaskDelay(2);
-			} while (StateMode == STOP);
-		case FIGHT: //sumo event
-			fightMode();
-			break;
-		case NEED_CALIB:
-			saveToFlash();
-#if PL_HAS_AUTOCALIB
-#if PL_HAS_LINE_SENSOR
-			if (loadFromFlash() == FALSE) {
-				saveToFlash();
-				SHELL_SendString(
-						(unsigned char*) "INFO: No calib in flash\r\n");
+//Warten auf Tastendruck--------------------------------------
+			while (getState()) {
+#if PL_HAS_WATCHDOG
+				WDT_IncTaskCntr(WDT_TASK_ID_STADIUM, WDT_);
+#endif
+				DRV_SetSpeed(0, 0);
+				FRTOS1_vTaskDelay(10);
 			}
-
-#endif
-#endif
-			StateMode = STOP;
-			break;
-		case FIND: //testat
-			FindMode();
-			speedR=5000;
-			speedL=5000;
-			break;
-		case PID: //test
+//Countdowm---------------------------------------------------
 #if 0
-			while (StateMode == PID) {
-				TACHO_CalcSpeed();
-				DRV_SetSpeed(speedL,speedR);
+			for(int i =0;i<2500;i++)
+			{
+				if(i%500==0)
+				{
+					if(i%2500==0)
+					{
+						BUZ_Beep(800,500);
+					}
+					else
+					{
+						BUZ_Beep(500,500);
+					}
+
+				}
+
+#if PL_HAS_WATCHDOG
+				WDT_IncTaskCntr(WDT_TASK_ID_STADIUM, 10);
+#endif
 				FRTOS1_vTaskDelay(2);
 			}
+			BUZ_Beep(900,500);
 #endif
-		case REMOTE_CONTROL:
-					while (StateMode == REMOTE_CONTROL) {
-						FRTOS1_taskYIELD();
-								}
+//Kampfmodus---------------------------------------------------
+			while (!getState()) {
+				bool turnDir = FALSE;
+				bool fastSpeed = TRUE;
+				bool slowSpeed = FALSE;
+				int counter = 0;
+//fahren bis Rand----------------------------------------------
+				DRV_SetSpeed(speedL, speedR);
+				int sum=getRefSum();
+				while (sum > 5000) {
+					if (getState() == TRUE) {
+						break;
+					}
+					int us = US_Measure_us();
+					int cm = US_usToCentimeters(us, 22);
+					sum = getRefSum();
+					if(sum<5000)
+					{
+						MOT_SetVal(MOT_GetMotorHandle(MOT_MOTOR_LEFT), 0xFFFF);
+						MOT_SetVal(MOT_GetMotorHandle(MOT_MOTOR_RIGHT), 0xFFFF);
+						break;
+					}
+					if((cm > 1) && (cm < 5) && fastSpeed)
+					{
+						DRV_SetSpeed(50000, 50000);
+						fastSpeed = FALSE;
+						slowSpeed = TRUE;
+					}
+					else if(slowSpeed)
+					{
+						DRV_SetSpeed(speedL, speedR);
+						fastSpeed = TRUE;
+						slowSpeed = FALSE;
+					}
+					sum = getRefSum();
+				}
+//zurückfahren------------------------------------------------
+				MOT_SetVal(MOT_GetMotorHandle(MOT_MOTOR_LEFT), 0xFFFF);
+				MOT_SetVal(MOT_GetMotorHandle(MOT_MOTOR_RIGHT), 0xFFFF);
+				DRV_SetSpeed(-speedL, -speedR);
+				ref = getWeightedValue();
+				if(ref>4700)
+				{
 
-					break;
+					DRV_SetSpeed(-speedL, -turnSpeed);
+				}
+				if(ref<2300)
+				{
+					DRV_SetSpeed(-turnSpeed, -speedR);
+				}
+				turnDir = (ref > 3500) ? FALSE : TRUE;
+				for (counter = 0; counter < 320; counter++) {
+					if (getState() == TRUE) {
+						break;
+					}
+#if PL_HAS_WATCHDOG
+					WDT_IncTaskCntr(WDT_TASK_ID_STADIUM, 10);
+#endif
+					FRTOS1_vTaskDelay(2);
+				}
+//drehen-------------------------------------------------------
+				if (turnDir == FALSE) {
+					if(ref)
+					DRV_SetSpeed(-turnSpeed, turnSpeed);
+				} else {
+					DRV_SetSpeed(turnSpeed, -turnSpeed);
+				}
+				for (counter = 0; counter < 100; counter++) {
+					int us = US_Measure_us();
+					int cm = US_usToCentimeters(us, 22);
+					if(((cm > 1) && (cm < 30)))
+					{
+						break;
+					}
+					if (getState() == TRUE) {
+						break;
+					}
+#if PL_HAS_WATCHDOG
+					WDT_IncTaskCntr(WDT_TASK_ID_STADIUM, 10);
+#endif
+					FRTOS1_vTaskDelay(2);
+				}
+				DRV_SetSpeed(speedL, speedR);
+			}
 		}
-
-		FRTOS1_vTaskDelay(1);
-
 	}
 }
+
+
 
 //Shell-------------------------------------------------------------------------------
 static void STADIUM_PrintHelp(const CLS1_StdIOType *io) {
@@ -286,25 +223,25 @@ uint8_t Stadium_ParseCommand(const unsigned char *cmd, bool *handled,
 		STADIUM_PrintStatus(io);
 		*handled = TRUE;
 	} else if (UTIL1_strcmp((char*)cmd, (char*)"stadium fight") == 0) {
-		setState(FIGHT);
+
 		*handled = TRUE;
 	} else if (UTIL1_strcmp((char*)cmd, (char*)"stadium stop") == 0) {
-		setState(STOP);
+
 		*handled = TRUE;
 	} else if (UTIL1_strcmp((char*)cmd, (char*)"stadium calib") == 0) {
-		setState(NEED_CALIB);
+
 		*handled = TRUE;
 	} else if (UTIL1_strcmp((char*)cmd, (char*)"stadium find") == 0) {
-		setState(FIND);
+
 		*handled = TRUE;
 	} else if (UTIL1_strcmp((char*)cmd, (char*)"stadium pid") == 0) {
-		setState(PID);
+
 		*handled = TRUE;
 	} else if (UTIL1_strncmp(cmd, "Stadium speed ",
 			sizeof("Stadium speed ") - 1) == 0) {
 		p = cmd + sizeof("Shell val ") - 1;
 		if (UTIL1_xatoi(&p, &val) == ERR_OK) {
-			setStadiumSpeed(val);
+
 			*handled = TRUE;
 		}
 		return ERR_OK;
@@ -313,11 +250,63 @@ uint8_t Stadium_ParseCommand(const unsigned char *cmd, bool *handled,
 
 void Stadium_INIT() {
 	if (FRTOS1_xTaskCreate(fight, "Stadium", configMINIMAL_STACK_SIZE, NULL,
-			tskIDLE_PRIORITY+1, NULL) != pdPASS) {
+			tskIDLE_PRIORITY+3, NULL) != pdPASS) {
 		for (;;) {
 		} /* error */
 	}
 
 }
 #endif
+
+#if 0
+void FindMode() {
+	while(StateMode == FIND)
+	{
+	int counter = 0;
+	uint8_t buf[16];
+	uint16_t cm, us;
+	speedR=1500;
+	speedL=1500;
+	int enableUS = 0;
+	do {
+		PID_Start();
+		for(counter=0;counter<5;counter++)
+		{
+		TACHO_CalcSpeed();
+		DRV_SetSpeed(1500,-1500);
+		FRTOS1_vTaskDelay(2);
+		}
+
+		us = US_Measure_us();
+		cm = US_usToCentimeters(us, 22);
+
+
+	} while ((cm < 1) || (cm > 50));
+	counter=0;
+	PID_Start();
+	do {
+		TACHO_CalcSpeed();
+		DRV_SetSpeed(1500,-1500);
+		counter++;
+		FRTOS1_vTaskDelay(2);
+	} while (counter<100);
+	speedR=4000;
+	speedL=4000;
+	PID_Start();
+	while ((getRefSum() > 5000)  && (StateMode == FIND)) {
+		TACHO_CalcSpeed();
+		DRV_SetSpeed(speedL, speedR);
+		FRTOS1_vTaskDelay(2);
+	}
+	counter = 0;
+	PID_Start();
+	do {
+		TACHO_CalcSpeed();
+		DRV_SetSpeed(-1000, -1000);
+		FRTOS1_vTaskDelay(2);
+		counter++;
+	} while ((counter < 1000) && (StateMode == FIND));
+	}
+}
+
 #endif

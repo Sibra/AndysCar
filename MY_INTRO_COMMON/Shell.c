@@ -27,9 +27,6 @@
 #if PL_HAS_MOTOR
   #include "Motor.h"
 #endif
-#if PL_HAS_STADIUM
-#include "Stadium.h"
-#endif
 #if PL_HAS_MCP4728
   #include "MCP4728.h"
 #endif
@@ -40,30 +37,39 @@
   #include "Q4CLeft.h"
   #include "Q4CRight.h"
 #endif
+#if PL_HAS_BUZZER
+  #include "Buzzer.h"
+#endif
+#if PL_HAS_MOTOR_TACHO
+  #include "Tacho.h"
+#endif
+#if PL_HAS_PID
+  #include "PID.h"
+#endif
+#if PL_HAS_DRIVE
+  #include "Drive.h"
+#endif
+#if PL_HAS_ACCEL
+  #include "MMA1.h"
+#endif
 #if PL_HAS_ULTRASONIC
   #include "Ultrasonic.h"
 #endif
-#if PL_HAS_MOTOR_TACHO
-#include "Tacho.h"
-#endif
-#if PL_HAS_PID
-#include "Pid.h"
-#endif
-#if PL_HAS_DRIVE
-#include "Drive.h"
-#endif
-#if PL_HAS_ACCEL
-#include "Accel.h"
-#include "MMA1.h"
-#endif
 #if PL_HAS_RADIO
-#include "RNET1.h"
-#include "RNet_App.h"
-#include "RNetConf.h"
+  #include "RNET1.h"
+  #include "RNet_App.h"
+  #include "RNetConf.h"
 #endif
 #if RNET_CONFIG_REMOTE_STDIO
-#include "RStdIO.h"
+  #include "RStdIO.h"
 #endif
+#if PL_HAS_REMOTE
+  #include "Remote.h"
+#endif
+#if PL_HAS_WATCHDOG
+  #include "Watchdog.h"
+#endif
+
 
 /* forward declaration */
 static uint8_t SHELL_ParseCommand(const unsigned char *cmd, bool *handled, const CLS1_StdIOType *io);
@@ -71,6 +77,9 @@ static uint8_t SHELL_ParseCommand(const unsigned char *cmd, bool *handled, const
 static const CLS1_ParseCommandCallback CmdParserTable[] =
 {
   CLS1_ParseCommand, /* Processor Expert Shell component, is first in list */
+#if KIN1_PARSE_COMMAND_ENABLED
+  KIN1_ParseCommand,
+#endif
   SHELL_ParseCommand, /* our own module parser */
 #if FRTOS1_PARSE_COMMAND_ENABLED
   FRTOS1_ParseCommand, /* FreeRTOS shell parser */
@@ -88,9 +97,6 @@ static const CLS1_ParseCommandCallback CmdParserTable[] =
 #if PL_HAS_MOTOR
   MOT_ParseCommand,
 #endif
-#if PL_HAS_STADIUM
-  Stadium_ParseCommand,
-#endif
 #if PL_HAS_MCP4728
   MCP4728_ParseCommand,
 #endif
@@ -104,35 +110,59 @@ static const CLS1_ParseCommandCallback CmdParserTable[] =
 #if Q4CRight_PARSE_COMMAND_ENABLED
   Q4CRight_ParseCommand,
 #endif
-
 #endif
-#if PL_HAS_ULTRASONIC
-  US_ParseCommand,
+#if PL_HAS_BUZZER
+  BUZ_ParseCommand,
 #endif
 #if PL_HAS_MOTOR_TACHO
   TACHO_ParseCommand,
 #endif
-#if PL_HAS_DRIVE
-  //DRV_ParseCommand,
-#endif
 #if PL_HAS_PID
   PID_ParseCommand,
 #endif
-#if PL_HAS_ACCEL
 
+#if PL_HAS_ACCEL
+#if MMA1_PARSE_COMMAND_ENABLED
   MMA1_ParseCommand,
+#endif
+#endif
+#if PL_HAS_ULTRASONIC
+  US_ParseCommand,
 #endif
 #if PL_HAS_RADIO
   RNET1_ParseCommand,
   RNETA_ParseCommand,
+#endif
+#if PL_HAS_REMOTE
+  REMOTE_ParseCommand,
 #endif
   NULL /* Sentinel */
 };
 
 static uint32_t SHELL_val; /* used as demo value for shell */
 
+#if PL_HAS_WATCHDOG
+static TickType_t ticksBeforeCmd;
+#endif
+
+void SHELL_OnBeforeIterateCmd(const uint8_t *cmd) {
+  (void)cmd; /* not used */
+#if PL_HAS_WATCHDOG
+  ticksBeforeCmd = FRTOS1_xTaskGetTickCount();
+#endif
+}
+
+void SHELL_OnAfterIterateCmd(const uint8_t *cmd) {
+  (void)cmd; /* not used */
+#if PL_HAS_WATCHDOG
+  WDT_IncTaskCntr(WDT_TASK_ID_SHELL, (FRTOS1_xTaskGetTickCount()-ticksBeforeCmd)/portTICK_RATE_MS); /* count for output to console */
+#endif
+}
+
+
 void SHELL_SendString(unsigned char *msg) {
 #if PL_HAS_SHELL_QUEUE
+  /*! \todo Implement function using queues */
   SQUEUE_SendString(msg);
 #else
   CLS1_SendStr(msg, CLS1_GetStdio()->stdOut);
@@ -245,12 +275,12 @@ static portTASK_FUNCTION(ShellTask, pvParameters) {
 #if PL_HAS_BLUETOOTH
   bluetooth_buf[0] = '\0';
 #endif
+#if RNET_CONFIG_REMOTE_STDIO
+  radio_cmd_buf[0] = '\0';
+#endif
   localConsole_buf[0] = '\0';
 #if CLS1_DEFAULT_SERIAL
   (void)CLS1_ParseWithCommandTable((unsigned char*)CLS1_CMD_HELP, ioLocal, CmdParserTable);
-#endif
-#if RNET_CONFIG_REMOTE_STDIO
-  radio_cmd_buf[0] = '\0';
 #endif
   for(;;) {
 #if CLS1_DEFAULT_SERIAL
@@ -279,17 +309,19 @@ static portTASK_FUNCTION(ShellTask, pvParameters) {
       }
     }
 #endif
-    FRTOS1_vTaskDelay(50/portTICK_RATE_MS);
+#if PL_HAS_WATCHDOG
+    WDT_IncTaskCntr(WDT_TASK_ID_SHELL, 10);
+#endif
+    FRTOS1_vTaskDelay(30);
   } /* for */
 }
 
 void SHELL_Init(void) {
-  //CLS1_Init(); /* this is done in PE_Low_Level_init()! */
 #if !CLS1_DEFAULT_SERIAL && PL_HAS_BLUETOOTH
   (void)CLS1_SetStdio(&BT_stdio); /* use the Bluetooth stdio as default */
 #endif
 #if PL_HAS_RTOS
-  if (FRTOS1_xTaskCreate(ShellTask, "Shell", configMINIMAL_STACK_SIZE+150, NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
+  if (FRTOS1_xTaskCreate(ShellTask, "Shell", configMINIMAL_STACK_SIZE+100, NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
     for(;;){} /* error */
   }
 #endif

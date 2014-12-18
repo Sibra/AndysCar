@@ -9,6 +9,7 @@
 #define RNETAPP_H_
 
 #include "Platform.h"
+#if PL_HAS_RADIO
 #include "RNWK.h"
 #if PL_HAS_SHELL
 #include "CLS1.h"
@@ -26,5 +27,5 @@ void RNETA_Deinit(void);
 
 /*! \brief Driver initialization */
 void RNETA_Init(void);
-
+#endif
 #endif /* RNETAPP_H_ */

@@ -58,30 +58,25 @@
 #include "RStdIO.h"
 #endif
 #include "Stadium.h"
+#if PL_HAS_WATCHDOG
+  #include "Watchdog.h"
+#endif
 
 #define APP_dstAddr 			(0xFF)
 #define RPHY_PACKET_FLAGS_NONE 	(0)
 
-
+bool state = TRUE;
 static uint8_t lastKeyPressed;
-
+bool getState()
+{
+	return state;
+}
 void APP_DebugPrint(unsigned char *str) {
 #if PL_HAS_SHELL
   CLS1_SendStr(str, CLS1_GetStdio()->stdOut);
 #endif
 }
 
-
-StadiumMode state=NONE;
-StadiumMode getState()
-{
-	return state;
-}
-uint8_t remoteMode = 0;
-uint8_t getRemoteMode()
-{
-	return remoteMode;
-}
 static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 {
 	static int cntr = 0;
@@ -110,13 +105,14 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 #if PL_NOF_KEYS >= 1
 	case EVNT_SW1_PRESSED:
 		lastKeyPressed = 1;
+		state = !state;
 #if !PL_HAS_STADIUM
 		state=FIGHT;
-		RAPP_SendPayloadDataBlock(&state, sizeof(state), RAPP_MSG_TYPE_REMOTE_STATE, APP_dstAddr, RPHY_PACKET_FLAGS_NONE);
+		//RAPP_SendPayloadDataBlock(&state, sizeof(state), RAPP_MSG_TYPE_REMOTE_STATE, APP_dstAddr, RPHY_PACKET_FLAGS_NONE);
 #endif
 #if PL_HAS_SHELL
-		//CLS1_SendStr("SW1 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
-		SHELL_SendString((unsigned char*) "SW1 PRESSED!\r\n");
+		CLS1_SendStr("SW1 PRESSED!\r\n", CLS1_GetStdio()->stdOut);
+		//SHELL_SendString((unsigned char*) "SW1 PRESSED!\r\n");
 #endif
 		break;
 
@@ -247,16 +243,59 @@ static void APP_EventHandler(EVNT_Handle event)/*!TODO why static*/
 	}
 }
 
+static int8_t ToSigned8Bit(uint16_t val) {
+	int tmp;
+	tmp = ((int) ((val >> 12) & 0x0F)-7);
 
+	return (int8_t) tmp;
+}
 
 
 static portTASK_FUNCTION(AppLoop, pvParameters) {
 	for (;;) {
-		uint8_t val8=29;
+
 		EVNT_HandleEvent(APP_EventHandler);
 		KEY_Scan();
+#if PL_HAS_WATCHDOG
+		WDT_IncTaskCntr(WDT_TASK_ID_MAIN, 50);
+#endif
+		FRTOS1_vTaskDelay(30);
+#if 0
+		uint8_t res;
+		uint16_t values[2];
+		res = AD1_Measure(TRUE);
+		if (res != ERR_OK) {
+			for (;;)
+				;
+		}
+		res = AD1_GetValue16(&values[0]);
+		if (res != ERR_OK) {
+			for (;;)
+				;
+		}
+		int x = ToSigned8Bit(values[0]) - 1;
+		int y = ToSigned8Bit(values[1]) - 1;
+		int8_t speedL = y + x + 7;
+		if (speedL > 15) {
+			speedL = 15;
+		}
+		if (speedL < 0) {
+			speedL = 0;
+		}
+		int8_t speedR = y - x + 7;
+		if (speedR > 15) {
+			speedR = 15;
+		}
+		if (speedR < 0) {
+			speedR = 0;
+		}
 
-		FRTOS1_vTaskDelay(20);
+		int8_t val8 = ((speedL << 4) + speedR);
+		RAPP_SendPayloadDataBlock(&val8, sizeof(val8), RAPP_MSG_TYPE_REMOTE_RUN,
+				APP_dstAddr,
+				RPHY_PACKET_FLAGS_NONE);
+		FRTOS1_vTaskDelay(10/portTICK_RATE_MS);
+#endif
 	}
 }
 
@@ -266,7 +305,7 @@ void APP_Start(void) {
 
 	EVNT_SetEvent(EVNT_INIT);
 #if PL_HAS_RTOS
-	if (FRTOS1_xTaskCreate(AppLoop, (signed portCHAR *)"App Loop", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL) != pdPASS) {
+	if (FRTOS1_xTaskCreate(AppLoop, (signed portCHAR *)"App Loop", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
 		for (;;) {
 		} /* error */
 	}
